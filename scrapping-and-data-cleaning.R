@@ -4,7 +4,7 @@
 
 ## Paula Alarcón
 ## Martín Lara
-## Nicolás
+## Nicolás González
 
 ### Punto 1, scrapping y limpieza de datos
 
