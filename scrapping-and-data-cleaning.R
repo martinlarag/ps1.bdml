@@ -94,14 +94,44 @@ summary(newdata)
 #############################################################################
 
 # 1) Variables relevantes ---------------------------------------------------
-dt_earnings <- dt %>% select(directorio,estrato1,sex,age,ingtot,college,ingtot,ingtotes,ingtotob,cuentaPropia,totalHoursWorked)
 
-# Creo una nueva variable de edad al cuadrado:
+dt_earnings <- dt %>% select(estrato1,sex,age,ingtot,college,cuentaPropia,totalHoursWorked)
 
-dt_earnings <- dt_earnings %>%
-  mutate(
-    age2 = age**2
-  )
-#
+# Hacemos la regresión
+skim(dt_earnings)
 
+mod = lm(ingtot ~ ., data = dt_earnings, x = TRUE)
+lm_summary = summary(mod)$coefficients
+
+lm_summary_print = lm_summary
+lm_summary_print[,'t value'] = abs(lm_summary_print[,'t value'])
+
+pretty_rownames = function(rnames){
+  rnames = gsub('^`', '', rnames)
+  rnames = gsub('`$', '', rnames)
+  rnames = gsub('`', ':', rnames)
+  rnames
+}
+
+kable(lm_summary_print[,c('Estimate', 'Std. Error', 't value')], digits = 1, col.names = c('Weight', 'SE', "|t|"), booktabs = TRUE, center = TRUE) %>% kable_styling(position = "center")
+
+plot_summs(mod, colors = "black", robust=TRUE)
+
+
+##Regresión de Earnings
+
+mod = lm(ingtot ~ age, data = dt_earnings, x = TRUE)
+lm_summary = summary(mod)$coefficients
+
+lm_summary_print = lm_summary
+lm_summary_print[,'t value'] = abs(lm_summary_print[,'t value'])
+
+pretty_rownames = function(rnames){
+  rnames = gsub('^`', '', rnames)
+  rnames = gsub('`$', '', rnames)
+  rnames = gsub('`', ':', rnames)
+  rnames
+}
+
+kable(lm_summary_print[,c('Estimate', 'Std. Error', 't value')], digits = 1, col.names = c('Weight', 'SE', "|t|"), booktabs = TRUE, center = TRUE) %>% kable_styling(position = "center")
 
