@@ -78,6 +78,41 @@ library(VIM)
 newdata <-  kNN(airquality, variable = c("Ozone", "Solar.R"), k = 6)
 summary(newdata)
 
+############ NUEVO PUNTO 1 ###############                       
+# Limpieza de datos ------------------------------------------------------------
+#Creamos una base con las variables de interés
+
+dt_total <- dt %>% select(college, cotPension, cuentaPropia, totalHoursWorked, ingtotob, ingtotes, ingtot, directorio, p6580s1, p6630s6, p6760, p6750, p7500s1a1, p7500s2a1, p7510s5a1, maxEducLevel, oficio, p6426 , age, sex, dsi, fex_c, iof1es, iof2es, iof6es, hoursWorkUsual, estrato1)
+
+#Filtramos a los menores de edad y a los desempleados
+
+dt_interes <- dt_total %>% subset(age>=18) %>% 
+  subset(dsi==0)#depuramos a todos los menores de edad
+
+#Sacamos el porcentaje de missing values por variable
+na_percentage <-sapply(dt_interes, function(y) sum(length(which(is.na(y))))/length(dt_interes$directorio))#creo una función para saber cuantos NAs hay por columna 
+data_x <- as.data.frame(na_percentage)
+View(na_percentage)
+
+
+# En un primer proceso de eliminación de variables, eliminamos aquellas con un 
+#alto porcentaje de missing values
+var <- cbind(Var_name = rownames(data_x), data_x)
+rownames(var) <- 1:nrow(var)
+var_for_drop <- var[var$na_percentage>=0.45,]
+var_for_keep <- var[var$na_percentage<0.45,]
+count(var) # Contamos cuantas variables tenemos en total (=27)
+count(var_for_keep) # Contamos cuantas variables tienen % missing menor o igual a 45% (=19)
+count(var_for_drop) # Contamos cuantas variables tienen % missing mayor a 45% (=8)
+
+#Seleccionamos las variables que cumplen con el requisito
+dt_final <- dt_interes %>% select(age, college, cotPension, cuentaPropia, directorio, dsi, estrato1, fex_c, hoursWorkUsual, ingtot, ingtotob, maxEducLevel, oficio, p6426, p7500s1a1, p7500s2a1, p7510s5a1, sex, totalHoursWorked)
+
+
+# Estadisticas descriptivas ------------------------------------------------------------
+stargazer(dt_final, type='latex')
+####### PENDIENTE HACE GRÁFICOS #######                       
+
 #############################################################################
 #
 #              Big Data & Machine Learning for Applied Economics                   
