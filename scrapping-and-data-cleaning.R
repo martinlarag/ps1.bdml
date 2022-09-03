@@ -105,12 +105,16 @@ count(var) # Contamos cuantas variables tenemos en total (=27)
 count(var_for_keep) # Contamos cuantas variables tienen % missing menor o igual a 45% (=19)
 count(var_for_drop) # Contamos cuantas variables tienen % missing mayor a 45% (=8)
 
-#Seleccionamos las variables que cumplen con el requisito
+#Seleccionamos las variables que cumplen con el requisito y sacamos estadísticas descriptivas
 dt_final <- dt_interes %>% select(age, college, cotPension, cuentaPropia, directorio, dsi, estrato1, fex_c, hoursWorkUsual, ingtot, ingtotob, maxEducLevel, oficio, p6426, p7500s1a1, p7500s2a1, p7510s5a1, sex, totalHoursWorked)
-
-
-# Estadisticas descriptivas ------------------------------------------------------------
+View(dt_final)
 stargazer(dt_final, type='latex')
+
+#Imputamos Missing Values y comparamos estadísticas descriptivas
+dt_imputado <-  kNN(dt_final, variable = c("cotPension", "hoursWorkUsual", "p6426", "totalHoursWorked"), k = 6)
+summary(dt_imputado)
+stargazer(dt_imputado, type='latex')
+                       
 ####### PENDIENTE HACE GRÁFICOS #######                       
 
 #############################################################################
