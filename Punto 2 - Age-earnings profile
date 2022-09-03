@@ -1,0 +1,21 @@
+#############################################################################
+#
+#              Big Data & Machine Learning for Applied Economics                   
+#                               Problem Set 1
+#                                   Grupo: 
+#                      Paula Alarcón    Código: 201812516
+#                      Martín Lara      Código: 20171...
+#                      Nicolás González Código: 201813698
+#
+#############################################################################
+#
+#                      Punto 2: Age-Earnings Profile
+#
+#############################################################################
+
+# Regresión de Earnings
+reg_earnings <- lm(dt_imputado$ingtot ~ dt_imputado$age + I(dt_imputado$age^2))
+stargazer(reg_earnings, type="latex")
+
+                       
+# Plot de la Estimación
