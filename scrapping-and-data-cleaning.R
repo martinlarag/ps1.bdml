@@ -132,13 +132,10 @@ stargazer(dt_imputado, type='latex')
 #
 #############################################################################
 
-# 1) Variables relevantes ---------------------------------------------------
-
-dt_earnings <- dt %>% select(estrato1,sex,age,ingtot,college,cuentaPropia,totalHoursWorked)
-
 # Regresión de Earnings
-Reg_earnings <- lm(dt$ingtot ~ dt$age + I(dt$age^2))
-stargazer(Reg_earnings, type="latex")
+reg_earnings <- lm(dt_imputado$ingtot ~ dt_imputado$age + I(dt_imputado$age^2))
+stargazer(reg_earnings, type="latex")
+
                        
 # Plot de la Estimación
                        
