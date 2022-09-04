@@ -44,11 +44,11 @@ bootstrap2 <- boot(dt_fem, bootfunct, R=1000)
 output_bootstrap2 <- t(rbind(bootstrap2$t0, apply(bootstrap2$t, 2, function(x) sd(x))))
 
 coeffunctfem <- function(data, index){
-  reg <- lm(ingtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index)
+  reg_fem <- lm(ingtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index)
   coefs <- coeffunctfem$coeficcients
   b2 <- coefs[2]
   b3 <- coefs[3]
-  peak <- .b2/(2*b3)
+  peak <- -b2/(2*b3)
   return(peak)
 }
 
@@ -56,9 +56,8 @@ bootstrap22 <- boot(dt_fem, coeffunctfem, R=1000)
 output_bootstrap2.1 <- t(rbind(bootstrap2.1$t0, apply(bootstrap2.1$t, 2, function(x) sd(x))))
 
 alpha <- 0.05
-min <- output_bootstrap2.1[1,1]-qnorm(1-(alpha/2))*output_bootstrap2.1[1,2]
-max <- output_bootstrap2.1[1,1]+qnorm(1-(alpha/2))*output_bootstrap2.1[1,2]
-View(min)
+min_fem <- output_bootstrap2.1[1,1]-qnorm(1-(alpha/2))*output_bootstrap2.1[1,2]
+max_fem <- output_bootstrap2.1[1,1]+qnorm(1-(alpha/2))*output_bootstrap2.1[1,2]
 
 
 b21 <- bootstrap2$t0[1]
