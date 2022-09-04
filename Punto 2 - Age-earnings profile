@@ -19,3 +19,36 @@ stargazer(reg_earnings, type="latex")
 
                        
 # Plot de la Estimación
+
+
+#Intervalos de confianza
+
+bootfunct <- function(data, index){
+  coef(lm(ingtot ~ age + I(age^2), data = dt_imputado, weights = fex_c, subset = index))
+}
+
+library(boot)
+bootstrap1 <- boot(dt_imputado, bootfunct, R=1000)
+output_bootstrap1 <- t(rbind(bootstrap1$t0, apply(bootstrap1$t, 2, function(x) sd(x))))
+
+coeffunct <- function(data, index){
+  reg <- lm(ingtot ~ age + I(age^2), data = dt_imputado, weights = fex_c, subset = index)
+  coefs <- coeffunct$coeficcients
+  b2 <- coefs[2]
+  b3 <- coefs[3]
+  peak <- .b2/(2*b3)
+  return(peak)
+}
+
+bootstrap1.1 <- boot(dt_imputado, coeffunct, R=1000)
+output_bootstrap1.1 <- t(rbind(bootstrap1.1$t0, apply(bootstrap1.1$t, 2, function(x) sd(x))))
+
+alpha <- 0.05
+min <- output_bootstrap1.1[1,1]-qnorm(1-(alpha/2))*output_bootstrap1.1[1,2]
+max <- output_bootstrap1.1[1,1]+qnorm(1-(alpha/2))*output_bootstrap1.1[1,2]
+View(min)
+
+
+b11 <- bootstrap1$t0[1]
+b12 <- bootstrap1$t0[2]
+b13 <- bootstrap1$t0[3]
