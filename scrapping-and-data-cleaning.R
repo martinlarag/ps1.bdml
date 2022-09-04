@@ -23,7 +23,7 @@ setwd(choose.dir())
 
 #se cargan los paquetes necesarios
 require(pacman)
-p_load(tidyverse, rvest, heatmaply, plyr, dplyr, stargazer, VIM)
+p_load(tidyverse, rvest, heatmaply, plyr, dplyr, stargazer, VIM, boot)
 
 #Se crea un vector con los links de las páginas dónde están los datos
 url_base <- paste0("https://ignaciomsarmiento.github.io/GEIH2018_sample/pages/geih_page_", 1:10, ".html")
