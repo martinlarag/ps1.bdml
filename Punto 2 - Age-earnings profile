@@ -36,7 +36,7 @@ coeffunct <- function(data, index){
   coefs <- coeffunct$coeficcients
   b2 <- coefs[2]
   b3 <- coefs[3]
-  peak <- .b2/(2*b3)
+  peak <- -b2/(2*b3)
   return(peak)
 }
 
