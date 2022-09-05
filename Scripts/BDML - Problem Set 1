@@ -295,3 +295,147 @@ reg_res <- lm(res_lningtot ~ res_fem + res_educ3 + res_educ3fem + res_educ4 + re
 
 
 stargazer(reg_res,reg_condfem3, type = "latex")
+
+############################################################################
+#
+#              Big Data & Machine Learning for Applied Economics                   
+#                               Problem Set 1
+#                                   Grupo: 
+#                      Paula Alarcón    Código: 201812516
+#                      Martín Lara      Código: 201711300
+#                      Nicolás González Código: 201813698
+#
+#############################################################################
+#
+#                      Punto 4: Predicting Earnings
+#
+#############################################################################
+
+require(pacman)
+p_load(tidyverse, rvest, heatmaply, plyr, dplyr, stargazer, VIM, boot)
+
+#Usando la Base dt_immputado crerada en el punto 1 usaremos, entre otros, los modelos de los
+#puntos anteriores  para predecir el ingreso de los individuos.
+
+p_load(rio , skimr , fastDummies, caret, glmnet, MLmetrics , janitor, fastDummies)
+
+set.seed(4444) #establecemos una semilla para asegurar la reproducibilidad de los resultados
+
+variables_categoricas <- maxEducLevel
+
+for (v in variables_categoricas){ df[, v] <- as.factor(df[, v, drop = T])}
+
+
+particion <- createDataPartition(y = dt_imputado$ingtotob,
+                                 p = 0.7,
+                                 list = F)
+train <- dt_imputado[particion,]
+test <- dt_imputado[-particion,]
+#Usando el paquete caret Separamos la base en entrenamiento (70%) y prueba (30%)
+
+
+# Predicciones ------------------------------------------------------------
+
+#Usando el paquete caret entrenamos los 7 modelos .
+
+modelo_1 <- train(ingtot ~ abs(sex-1),
+                  data = train,
+                  method = "lm",
+                  )
+
+modelo_2 <- train(ingtot ~ age + I(age^2),
+                  data = train,
+                  method = "lm",
+                  )
+
+modelo_3 <- train(ingtot ~ age + college*totalHoursWorked + sex,
+                  data = train,
+                  method = "lm",
+                  )
+
+modelo_4 <- train(ingtot ~ hoursWorkUsual*estrato1 + cotPension,
+                  data = train,
+                  method = "lm",
+                  )
+
+
+modelo_5 <- train(ingtot ~ hoursWorkUsual*estrato1 + cotPension + p6426,
+                  data = train,
+                  method = "lm",
+                  )
+
+modelo_6 <- train(ingtot ~ college + p7500s1a1 + p7500s2a1 + estrato1*hoursWorkUsual,
+                  data = train,
+                  method = "lm",
+                  )
+
+modelo_7 <- train(ingtot ~ hoursWorkUsual*estrato1 + cotPension + age + I(age^2) + abs(sex-1),
+                  data = train,
+                  method = "lm",
+                  )
+
+#predecimos en la base de prueba
+
+pred_m1 <- predict(modelo_1, test)
+pred_m2 <- predict(modelo_2, test)
+pred_m3 <- predict(modelo_3, test)
+pred_m4 <- predict(modelo_4, test)
+pred_m5 <- predict(modelo_5, test)
+pred_m6 <- predict(modelo_6, test)
+pred_m7 <- predict(modelo_7, test)
+
+MAE_m1 <- MAE(test$ingtot, pred_m1)
+MAE_m2 <- MAE(test$ingtot, pred_m2)
+MAE_m3 <- MAE(test$ingtot, pred_m3)
+MAE_m4 <- MAE(test$ingtot, pred_m4)
+MAE_m5 <- MAE(test$ingtot, pred_m5)
+MAE_m6 <- MAE(test$ingtot, pred_m6)
+MAE_m7 <- MAE(test$ingtot, pred_m7)
+
+MAPE_m1 <- MAPE(test$ingtot, pred_m1)
+MAPE_m2 <- MAPE(test$ingtot, pred_m2)
+MAPE_m3 <- MAPE(test$ingtot, pred_m3)
+MAPE_m4 <- MAPE(test$ingtot, pred_m4)
+MAPE_m5 <- MAPE(test$ingtot, pred_m5)
+MAPE_m6 <- MAPE(test$ingtot, pred_m6)
+MAPE_m7 <- MAPE(test$ingtot, pred_m7)
+
+RMSE_m1 <- RMSE(test$ingtot, pred_m1)
+RMSE_m2 <- RMSE(test$ingtot, pred_m2)
+RMSE_m3 <- RMSE(test$ingtot, pred_m3)
+RMSE_m4 <- RMSE(test$ingtot, pred_m4)
+RMSE_m5 <- RMSE(test$ingtot, pred_m5)
+RMSE_m6 <- RMSE(test$ingtot, pred_m6)
+RMSE_m7 <- RMSE(test$ingtot, pred_m7)
+
+# Leave one out cross validation ------------------------------------------
+
+loocv <- trainControl(method = "LOOCV")
+
+pred_m1_loocv <- train(ingtot ~ abs(sex-1),
+                        data = dt_imputado,
+                        method = "lm",
+                        trControl = loocv
+                        )
+
+pred_m3_loocv <- train(ingtot ~ age + college*totalHoursWorked + sex,
+                  data = dt_imputado,
+                  method = "lm",
+                  trControl = loocv
+                  )
+stats <- data.frame(MAE=c(MAE_m1, MAE_m2, MAE_m3, MAE_m4, MAE_m5, MAE_m6, MAE_m7),
+                    MAPE=c(MAPE_m1, MAPE_m2, MAPE_m3, MAPE_m4, MAPE_m5, MAPE_m6, MAPE_m7),
+                    RMSE=c(RMSE_m1, RMSE_m2, RMSE_m3, RMSE_m4, RMSE_m5, RMSE_m6, RMSE_m7))
+stargazer(stats, summary = F, title = "Metricas de predición")
+
+stats_loocv1 <- data.frame(pred_m1_loocv$results)
+stats_loocv3 <- data.frame(pred_m3_loocv$results)
+
+stats_loocv <- rbind(stats_loocv1,stats_loocv3)
+
+stats_loocv <- stats_loocv %>% select(c(RMSE, MAE)) %>% 
+  
+
+stargazer(stats_loocv, summary = F, title = "Metricas de predicción LOOCV")
+
+
