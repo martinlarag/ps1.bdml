@@ -223,7 +223,10 @@ b33 <- bootstrap3$t0[3]#-853
 
 #Plot hombres Earnings = beta1 + beta2Age + beta3Age2 + u pero solo para hombres
 
+
+
 #Regresiones condicionales Long y FWL 
+dt_res=dt_imputado2
 dt_imputado2 <- dt_imputado2 %>% 
   mutate(
     age2 = age^2,
@@ -262,9 +265,13 @@ reg_cond <- lm(lningtot ~ educ3 +  educ4  + educ5 +  educ6  + educ7 +
                      hoursWorkUsual+ cuentaPropia + age + age2, weights = fex_c, data=dt_res)
 stargazer(reg_condfem3, reg_cond, type = "latex")
 
+res_nr <- sum((reg_condfem3$residuals)^2)
+res_nr
+res_r <- sum((reg_cond$residuals)^2)
+res_r
 
 #FWL
-dt_res=dt_imputado2
+
 dt_res <- dt_res %>% drop_na()
 
 dt_res <- dt_res %>% mutate(
