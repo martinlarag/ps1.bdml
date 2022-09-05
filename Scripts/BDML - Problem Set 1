@@ -23,7 +23,7 @@ setwd(choose.dir())
 
 #se cargan los paquetes necesarios
 require(pacman)
-p_load(tidyverse, rvest, heatmaply, plyr, dplyr, stargazer, VIM, boot, readxl, lubridate, tidyr, zoo, psych)
+p_load(ggplot2, boot, lessR, readr, readxl, ggplot2, ggthemes, VIM, tidyverse, rvest, heatmaply, plyr, dplyr, stargazer, knitr, kableExtra, here, jtools, ggstance, broom, broom.mixed, skimr, tydir, zoo, psych, lubridate)
 
 #Se crea un vector con los links de las páginas dónde están los datos
 url_base <- paste0("https://ignaciomsarmiento.github.io/GEIH2018_sample/pages/geih_page_", 1:10, ".html")
@@ -93,23 +93,30 @@ stargazer(dt_imputado, type='latex')
 #
 #############################################################################
 
+# 1) Variables relevantes ---------------------------------------------------
+
+dt_earnings <- dt_imputado %>% select(estrato1,sex,age,ingtot,college,cuentaPropia,totalHoursWorked,fex_c)
+
 # Regresión de Earnings
-Reg_earnings <- lm(dt_imputado$ingtot ~ dt_imputado$age + I(dt_imputado$age^2), weights = fex_c)
+Reg_earnings <- lm(dt_earnings$ingtot ~ dt_earnings$age + I(dt_earnings$age^2))
 stargazer(Reg_earnings, type="latex")
 
-#Plot Earnings = beta1 + beta2Age + beta3Age2 + u, señalar el peak e intentar poner IC
+# Plot de la Estimación
+# Permite cambiar el aspecto de ggplot a algo parecido a base
+
+#plot predicted vs. actual values
 
 #Intervalos de confianza
 bootfunct <- function(data, index){
-  coef(lm(ingtot ~ age + I(age^2), data = dt_imputado, weights = fex_c, subset = index))
+  coef(lm(ingtot ~ age + I(age^2), data = dt_earnings, weights = fex_c, subset = index))
 }
 
-bootstrap1 <- boot(dt_imputado, bootfunct, R=1000)
+bootstrap1 <- boot(dt_earnings, bootfunct, R=1000)
 output_bootstrap1 <- t(rbind(bootstrap1$t0, apply(bootstrap1$t, 2, function(x) sd(x))))
 
 
 coeffunct <- function(data, index){
-  reg <- lm(ingtot ~ age + I(age^2), data = dt_imputado, weights = fex_c, subset = index)
+  reg <- lm(ingtot ~ age + I(age^2), data = dt_earnings, weights = fex_c, subset = index)
   coefs <- reg$coefficients
   b2 <- coefs[2]
   b3 <- coefs[3]
@@ -117,7 +124,7 @@ coeffunct <- function(data, index){
   return(peak)
 }
 
-bootstrap11 <- boot(dt_imputado, coeffunct, R=1000)
+bootstrap11 <- boot(dt_earnings, coeffunct, R=1000)
 output_bootstrap11 <- t(rbind(bootstrap11$t0, apply(bootstrap11$t, 2, function(x) sd(x))))
 
 alpha <- 0.05
@@ -127,6 +134,34 @@ max <- output_bootstrap11[1,1]+qnorm(1-(alpha/2))*output_bootstrap11[1,2]#53
 b11 <- bootstrap1$t0[1]#-794112
 b12 <- bootstrap1$t0[2]#101533
 b13 <- bootstrap1$t0[3]#-977
+
+
+mod1 <- lm(ingtot ~ age + I(age^2), data=dt_earnings, weights=fex_c)
+summary(mod1)
+
+maxe <- mod1$fitted.values
+edad_max <- -(mod1$coefficients[2])/(2*(mod1$coefficients[3]))
+dt_earnings$predicciones <- mod1$coefficients[1]+(mod1$coefficients[2]*dt_earnings$age)+(mod1$coefficients[3]*I(dt_earnings$age^2))
+
+ggplot(dt_earnings, aes(x=age, y=predicciones)) + 
+  geom_point(color='#808080', size=0.9) +
+  geom_vline(aes(xintercept=edad_max), linetype='dashed', size=1, color='dodgerblue1')+
+  geom_linerange(aes(xmin=min, xmax=max, y = max(maxe)), size=2, color='red') +
+  annotate("text", x=35, y=max(maxe),
+           label="IC min: 50.86",
+           colour='red', size=4) +
+  annotate("text", x=70, y=max(maxe),
+           label="IC max: 53.00",
+           colour='red', size=4) +
+  annotate("text", x=54, y=1000000,
+           label="Edad max: 51.93591",
+           colour='dodgerblue1', size=4, angle = 90) +
+  #geom_smooth(method='lm', formula=y~x+I(x^2), se=FALSE, col='dodgerblue1',size=2) +
+  #ggtitle('Valores predichos de la regresión: Ingresos según la edad') +# for the main title
+  xlab('Edad') +# for the x axis label
+  ylab('Ingresos totales mensuales en COP') +# for the y axis label
+  ylim (0, 2000000) +
+  theme_light()
 
 ############################################################################
 #
@@ -142,7 +177,7 @@ b13 <- bootstrap1$t0[3]#-977
 #                      Punto 3: Gender Earnings Gap
 #
 #############################################################################
-
+ #######
 #Creamos variable fem, el logaritmo de ingresos y demás variables
 dt_imputado2 <- dt_imputado %>% 
   mutate(
@@ -151,26 +186,27 @@ dt_imputado2 <- dt_imputado %>%
   )
 
 # Regresión simple fem
-reg_fem <- lm(dt_imputado2$lningtot ~ dt_imputado2$fem, weights = fex_c)
-stargazer(reg_fem, type = "latex")
+reg_fem <- lm(dt_imputado2$lningtot ~ dt_imputado2$fem, weights = dt_imputado2$fex_c)
+stargazer(reg_fem, type = "text")
 
 #Dividimos la base en hombres y mujeres
-dt_fem <- dt_imputado %>% subset(sex==0) 
-dt_male <- dt_imputado %>% subset(sex==1)
+dt_fem <- dt_imputado2 %>% subset(sex==0) 
+dt_male <- dt_imputado2 %>% subset(sex==1)
 View(dt_fem)
-
+#dt_fem <- dt_fem %>% drop_na(lningtot)
 
 #Intervalos de confianza mujeres
+#Creamos variable fem, el logaritmo de ingresos y demás variables
+
 bootfunctfem <- function(data, index){
   coef(lm(lningtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index))
 }
 
-bootstrap2 <- boot(dt_fem, bootfunct, R=1000)
+bootstrap2 <- boot(dt_fem, bootfunctfem, R=1000)
 output_bootstrap2 <- t(rbind(bootstrap2$t0, apply(bootstrap2$t, 2, function(x) sd(x))))
 
-
 coeffunct2 <- function(data, index){
-  reg <- lm(lningtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index)
+  reg <- lm(ingtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index)
   coefs <- reg$coefficients
   b2 <- coefs[2]
   b3 <- coefs[3]
@@ -178,18 +214,53 @@ coeffunct2 <- function(data, index){
   return(peak)
 }
 
-bootstrap21 <- boot(dt_fem, coeffunct, R=1000)
+bootstrap21 <- boot(dt_fem, coeffunct2, R=1000)
 output_bootstrap21 <- t(rbind(bootstrap21$t0, apply(bootstrap21$t, 2, function(x) sd(x))))
 
-alpha <- 0.05
-minfem <- output_bootstrap21[1,1]-qnorm(1-(alpha/2))*output_bootstrap21[1,2]#50.6
-maxfem <- output_bootstrap21[1,1]+qnorm(1-(alpha/2))*output_bootstrap21[1,2]#54
+alphafem <- 0.05
+minfem <- output_bootstrap21[1,1]-qnorm(1-(alphafem/2))*output_bootstrap21[1,2]#50.6
+maxfem <- output_bootstrap21[1,1]+qnorm(1-(alphafem/2))*output_bootstrap21[1,2]#54
 
 b21 <- bootstrap2$t0[1]#-576861
 b22 <- bootstrap2$t0[2]#88606
 b23 <- bootstrap2$t0[3]#-847
 
+
+mod2 <- lm(ingtot ~ age + I(age^2), data = dt_fem, weights = fex_c)
+mod2
+summary(mod2)
+
+maxe2 <- mod2$fitted.values
+edad_max2 <- -(mod2$coefficients[2])/(2*(mod2$coefficients[3]))
+dt_fem$predicciones2 <- mod2$coefficients[1]+(mod2$coefficients[2]*dt_fem$age)+(mod2$coefficients[3]*I(dt_fem$age^2))
+
+minfem
+maxfem
+edad_max2
+
+
 #Plot mujeres Earnings = beta1 + beta2Age + beta3Age2 + u pero solo para mujeres
+
+ggplot(dt_fem, aes(x=age, y=predicciones2)) + 
+  geom_point(color='#808080', size=0.9) +
+  geom_vline(aes(xintercept=edad_max2), linetype='dashed', size=1, color='dodgerblue1')+
+  geom_linerange(aes(xmin=minfem, xmax=maxfem, y = max(maxe2)), size=2, color='red') +
+  annotate("text", x=27, y=14,
+           label="IC min: 41.37",
+           colour='red', size=4) +
+  annotate("text", x=60, y=14,
+           label="IC max: 44.78",
+           colour='red', size=4) +
+  annotate("text", x=45, y=13,
+           label="Edad max: 43.08",
+           colour='dodgerblue1', size=4, angle = 90) +
+  #geom_smooth(method='lm', formula=y~x+I(x^2), se=FALSE, col='dodgerblue1',size=2) +
+  #ggtitle('Valores predichos de la regresión: Ingresos según la edad') +# for the main title
+  xlab('Edad') +# for the x axis label
+  ylab('Ingresos totales mensuales en COP') +# for the y axis label
+  ylim (12, 14) +
+  theme_light()
+
 
 
 #Intervalos de confianza hombres
@@ -197,7 +268,7 @@ bootfunctmale <- function(data, index){
   coef(lm(lningtot ~ age + I(age^2), data = dt_male, weights = fex_c, subset = index))
 }
 
-bootstrap3 <- boot(dt_male, bootfunct, R=1000)
+bootstrap3 <- boot(dt_male, bootfunctmale, R=1000)
 output_bootstrap3 <- t(rbind(bootstrap3$t0, apply(bootstrap3$t, 2, function(x) sd(x))))
 
 
@@ -210,7 +281,7 @@ coeffunct3 <- function(data, index){
   return(peak)
 }
 
-bootstrap31 <- boot(dt_male, coeffunct, R=1000)
+bootstrap31 <- boot(dt_male, coeffunct3, R=1000)
 output_bootstrap31 <- t(rbind(bootstrap31$t0, apply(bootstrap31$t, 2, function(x) sd(x))))
 
 alpha <- 0.05
@@ -222,6 +293,70 @@ b32 <- bootstrap3$t0[2]#89417
 b33 <- bootstrap3$t0[3]#-853
 
 #Plot hombres Earnings = beta1 + beta2Age + beta3Age2 + u pero solo para hombres
+
+mod3 <- lm(lningtot ~ age + I(age^2), data = dt_male, weights = fex_c)
+mod3
+summary(mod3)
+
+maxe3 <- mod3$fitted.values
+edad_max3 <- -(mod3$coefficients[2])/(2*(mod3$coefficients[3]))
+dt_male$predicciones3 <- mod3$coefficients[1]+(mod3$coefficients[2]*dt_male$age)+(mod3$coefficients[3]*I(dt_male$age^2))
+
+minmale
+maxmale
+edad_max3
+
+
+#Plot mujeres Earnings = beta1 + beta2Age + beta3Age2 + u pero solo para mujeres
+
+ggplot(dt_male, aes(x=age, y=predicciones3)) + 
+  geom_point(color='#808080', size=0.9) +
+  geom_vline(aes(xintercept=edad_max3), linetype='dashed', size=1, color='dodgerblue1')+
+  geom_linerange(aes(xmin=minmale, xmax=maxmale, y = max(maxe3)), size=2, color='red') +
+  annotate("text", x=27, y=max(maxe3),
+           label="IC min: 48.71",
+           colour='red', size=4) +
+  annotate("text", x=70, y=max(maxe3),
+           label="IC max: 50.98",
+           colour='red', size=4) +
+  annotate("text", x=53, y=13,
+           label="Edad max: 49.85",
+           colour='dodgerblue1', size=4, angle = 90) +
+  #geom_smooth(method='lm', formula=y~x+I(x^2), se=FALSE, col='dodgerblue1',size=2) +
+  #ggtitle('Valores predichos de la regresión: Ingresos según la edad') +# for the main title
+  xlab('Edad') +# for the x axis label
+  ylab('Ingresos totales mensuales en COP') +# for the y axis label
+  ylim (12, 15) +
+  theme_light()
+
+# ACá la gráfica combinada:
+
+ggplot() +               
+  geom_point(data = dt_fem, aes(x=age, y=predicciones2), 
+             fill = "red", color = "red",
+             size = 1)+
+  geom_linerange(aes(ymin=12, ymax=max(maxe2), x = edad_max2), size=1, color='red', linetype='dashed') +
+  annotate("text", x=45, y=13,
+           label="Edad max mujeres: 43.08",
+           colour='red', size=4, angle = 90) +
+  annotate("text", x=75, y=14,
+           label="Valores predichos para las mujeres",
+           colour='red', size=4)+
+  geom_point(data = dt_male, aes(x=age, y=predicciones3), 
+             fill = "dodgerblue1", color = "dodgerblue1", 
+             size = 1)+
+  geom_linerange(aes(ymin=12, ymax=max(maxe3), x = edad_max3), size=1, color='dodgerblue1', linetype='dashed') +
+  annotate("text", x=53, y=13,
+           label="Edad max hombres: 49.85",
+           colour='dodgerblue1', size=4, angle = 90)+
+  annotate("text", x=75, y=14.4,
+           label="Valores predichos para los hombres",
+           colour='dodgerblue1', size=4)+
+  xlab('Edad') +# for the x axis label
+  ylab('Logaritmo de los ingresos totales mensuales en COP') +# for the y axis label
+  ylim (12, 14.5) +
+  theme_light()
+  ggtitle("Combined Plot")
 
 
 
