@@ -260,7 +260,6 @@ View(reg4)
 lm
 
 #FWL
-
 dt_res=dt_imputado
 dt_res <- dt_res %>% drop.na(lningtot)
 
@@ -292,3 +291,129 @@ View(dt_res)
  
 reg_FWL <- lm(res_lningtot ~ res_educ1 + res_educ1fem + res_educ3 + res_educ3fem + res_educ4 + res_educ4fem + res_educ5
               + res_educ5fem + res_educ6 + res_educ6fem + res_educ7 + res_educ7fem + res_hoursWorkUsual + res_age + res_age2)
+
+
+
+##########################################
+
+nuevo punto 3:
+
+###########################################
+#Creamos variable fem y el logaritmo de ingresos
+dt_imputado2 <- dt_imputado %>% 
+  mutate(
+    fem = ifelse(sex==1, 0, 1),
+    lningtot = ifelse(ingtot==0, NA, log(ingtot))
+  )
+
+#Regresiones condicionales Long y FWL 
+dt_imputado2 <- dt_imputado2 %>% 
+  mutate(
+    age2 = age^2,
+    agefem = age*fem,
+    age2fem =age2*fem,
+    oficiofem = oficio*fem,
+    maxEducLevelfem = maxEducLevel*fem,
+    hoursWorkUsualfem = hoursWorkUsual*fem,
+    p6426_impfem = p6426_imp*fem,
+    collegefem = college*fem,
+    ingreso = ingtot+p7500s1a1+p7500s2a1+ p7510s5a1,
+    lningreso = ifelse(ingreso==0, NA, log(ingreso))
+  )
+
+#Modelo sin restricción , es decir con female
+dt_imputado2 <- dt_imputado2 %>% 
+  mutate(
+    educ1 = ifelse(maxEducLevel==1, 1, 0),
+    educ1fem = educ1*fem,
+    educ3 = ifelse(maxEducLevel==3, 1, 0),
+    educ3fem = educ3*fem,
+    educ4 = ifelse(maxEducLevel==4, 1, 0),
+    educ4fem = educ4*fem,
+    educ5 = ifelse(maxEducLevel==5, 1, 0),
+    educ5fem = educ5*fem,
+    educ6 = ifelse(maxEducLevel==6, 1, 0),
+    educ6fem = educ6*fem,
+    educ7 = ifelse(maxEducLevel==7, 1, 0),
+    educ7fem = educ7*fem
+  )
+
+
+reg_condfem <- lm(dt_imputado2$lningreso ~ dt_imputado2$fem +  factor(dt_imputado2$maxEducLevel) + factor(dt_imputado2$maxEducLevelfem) +
+                    dt_imputado2$hoursWorkUsual+ dt_imputado2$cuentaPropia + dt_imputado2$age +dt_imputado2$age2, weights = dt_imputado2$fex_c)
+stargazer(reg_condfem, type = "text")
+
+#Modelo restringido
+reg_cond <- lm(dt_imputado2$lningreso ~ factor(dt_imputado2$maxEducLevel) + dt_imputado2$hoursWorkUsual+ dt_imputado2$cuentaPropia + dt_imputado2$age +dt_imputado2$age2, weights = dt_imputado2$fex_c)
+stargazer(reg_cond, type = "text")
+
+#Prueba que no salió :(
+reg4 <- lm(lningtot ~ fem + profesional + profesionalfem + sineducacion + Sineducacionfem + primaria + primariafem + bachiller + bachillerfem + hoursWorkUsual + cuentaPropia + age + age2, data = dt_imputado, weights = fex_c )
+stargazer(reg4, type = "text")
+View(reg4)
+
+#Prueba de hipótesis
+
+#FWL
+dt_res=dt_imputado2
+dt_res <- dt_res %>% drop_na()
+dt_res <- dt_res %>% drop_na(maxEducLevel)
+dt_res <- dt_res %>% drop_na(lningtot)
+dt_res <- dt_res %>% drop_na(lningtot)
+dt_res <- dt_res %>% drop_na(lningtot)
+dt_res <- dt_res %>% drop_na(lningtot)
+
+
+View(dt_imputado2)
+dt_res=data.frame(mat=matrix(ncol = 0, nrow = 0))
+
+
+dt_res$res_lningtot <- (lm(lningtot ~ cuentaPropia, data = dt_imputado2)$residuals)
+View(res_lningtot$residuals)  
+View(dt_res)
+
+
+
+reg_FWL <- lm(res_lningtot ~ res_educ1 + res_educ1fem + res_educ3 + res_educ3fem + res_educ4 + res_educ4fem + res_educ5
+              + res_educ5fem + res_educ6 + res_educ6fem + res_educ7 + res_educ7fem + res_hoursWorkUsual + res_age + res_age2)
+
+
+
+
+
+
+dt_res <- dt_res %>% mutate(
+  res_fem=lm(fem ~ cuentaPropia, data = dt_res)$residuals,
+  res_lningtot=lm(lningtot ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ1=lm(educ1 ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ1fem=lm(educ1fem ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ3=lm(educ3 ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ3fem=lm(educ3fem ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ4=lm(educ4 ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ4fem=lm(educ4fem ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ5=lm(educ5 ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ5fem=lm(educ5fem ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ6=lm(educ6 ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ6fem=lm(educ6fem ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ7=lm(educ7 ~ cuentaPropia, data = dt_res)$residuals,
+  res_educ7fem=lm(educ7fem ~ cuentaPropia, data = dt_res)$residuals, 
+  res_hoursWorkUsual=lm(hoursWorkUsual ~ cuentaPropia, data = dt_res)$residuals,
+  res_age=lm(age ~ cuentaPropia, data=dt_res)$residuals,
+  res_age2=lm(age2 ~ cuentaPropia, data=dt_res)$residuals
+)
+
+reg_condfem <- lm(dt_res$lningreso ~ dt_res$fem +  factor(dt_res$maxEducLevel) + factor(dt_res$maxEducLevelfem) +
+                    dt_res$hoursWorkUsual+ dt_res$cuentaPropia + dt_res$age + dt_res$age2, weights = dt_res$fex_c)
+
+
+
+
+reg_condfem3 <- lm(lningtot ~ fem + educ3 + educ3fem + educ4 + educ4fem + educ5 + educ5fem + educ6 + educ6fem + educ7 +
+                    hoursWorkUsual+ cuentaPropia + age + age2, weights = fex_c, data=dt_res)
+
+reg_res <- lm(res_lningtot ~ res_fem + res_educ3 + res_educ3fem + res_educ4 + res_educ4fem + res_educ5 + res_educ5fem + res_educ6 + res_educ6fem + res_educ7 + res_hoursWorkUsual + res_age + res_age2, data = dt_res, weights = dt_res$fex_c)
+
+
+
+stargazer(reg_res,reg_condfem3, type = "text")
+
