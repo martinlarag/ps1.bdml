@@ -4,7 +4,7 @@
 #                               Problem Set 1
 #                                   Grupo: 
 #                      Paula Alarcón    Código: 201812516
-#                      Martín Lara      Código: 20171...
+#                      Martín Lara      Código: 201711300
 #                      Nicolás González Código: 201813698
 #
 #############################################################################
@@ -84,7 +84,7 @@ stargazer(dt_imputado, type='latex')
 #                               Problem Set 1
 #                                   Grupo: 
 #                      Paula Alarcón    Código: 201812516
-#                      Martín Lara      Código: 20171...
+#                      Martín Lara      Código: 201711300
 #                      Nicolás González Código: 201813698
 #
 #############################################################################
@@ -134,7 +134,7 @@ b13 <- bootstrap1$t0[3]#-977
 #                               Problem Set 1
 #                                   Grupo: 
 #                      Paula Alarcón    Código: 201812516
-#                      Martín Lara      Código: 20171...
+#                      Martín Lara      Código: 201711300
 #                      Nicolás González Código: 201813698
 #
 #############################################################################
