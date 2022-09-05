@@ -1,0 +1,294 @@
+#############################################################################
+#
+#              Big Data & Machine Learning for Applied Economics                   
+#                               Problem Set 1
+#                                   Grupo: 
+#                      Paula Alarcón    Código: 201812516
+#                      Martín Lara      Código: 20171...
+#                      Nicolás González Código: 201813698
+#
+#############################################################################
+#
+#                   Punto 1: scrapping y limpieza de datos
+#
+#############################################################################
+
+# Scrapping de datos GEIH ---------------------------------------------------
+
+# Limpio mi lugar de trabajo
+rm(list=ls())
+
+# Asigno un directorio donde me guarde los resultados: 
+setwd(choose.dir())
+
+#se cargan los paquetes necesarios
+require(pacman)
+p_load(tidyverse, rvest, heatmaply, plyr, dplyr, stargazer, VIM, boot)
+
+# Limpieza de datos ------------------------------------------------------------
+#Creamos una base con las variables de interés
+
+dt_total <- dt %>% select(college, cotPension, cuentaPropia, totalHoursWorked, ingtotob, ingtotes, ingtot, directorio, p6580s1, p6630s6, p6760, p6750, p7500s1a1, p7500s2a1, p7510s5a1, maxEducLevel, oficio, p6426 , age, sex, dsi, fex_c, iof1es, iof2es, iof6es, hoursWorkUsual, estrato1)
+
+#Filtramos a los menores de edad y a los desempleados
+
+dt_interes <- dt_total %>% subset(age>=18) %>% 
+  subset(dsi==0)#depuramos a todos los menores de edad
+
+#Sacamos el porcentaje de missing values por variable
+na_percentage <-sapply(dt_interes, function(y) sum(length(which(is.na(y))))/length(dt_interes$directorio))#creo una función para saber cuantos NAs hay por columna 
+data_x <- as.data.frame(na_percentage)
+View(na_percentage)
+
+
+# En un primer proceso de eliminación de variables, eliminamos aquellas con un 
+#alto porcentaje de missing values
+var <- cbind(Var_name = rownames(data_x), data_x)
+rownames(var) <- 1:nrow(var)
+var_for_drop <- var[var$na_percentage>=0.45,]
+var_for_keep <- var[var$na_percentage<0.45,]
+count(var) # Contamos cuantas variables tenemos en total (=27)
+count(var_for_keep) # Contamos cuantas variables tienen % missing menor o igual a 45% (=19)
+count(var_for_drop) # Contamos cuantas variables tienen % missing mayor a 45% (=8)
+
+#Seleccionamos las variables que cumplen con el requisito y sacamos estadísticas descriptivas
+dt_final <- dt_interes %>% select(age, college, cotPension, cuentaPropia, directorio, dsi, estrato1, fex_c, hoursWorkUsual, ingtot, ingtotob, maxEducLevel, oficio, p6426, p7500s1a1, p7500s2a1, p7510s5a1, sex, totalHoursWorked)
+stargazer(dt_final, type='latex')
+
+#Imputamos Missing Values y comparamos estadísticas descriptivas
+dt_imputado <-  kNN(dt_final, variable = c("cotPension", "hoursWorkUsual", "p6426", "totalHoursWorked"), k = 6)
+summary(dt_imputado)
+stargazer(dt_imputado, type='latex')
+View(dt_imputado)
+
+#############################################################################
+#
+#              Big Data & Machine Learning for Applied Economics                   
+#                               Problem Set 1
+#                                   Grupo: 
+#                      Paula Alarcón    Código: 201812516
+#                      Martín Lara      Código: 20171...
+#                      Nicolás González Código: 201813698
+#
+#############################################################################
+#
+#                      Punto 2: Age-Earnings Profile
+#
+#############################################################################
+
+# Regresión de Earnings
+Reg_earnings <- lm(dt_imputado$ingtot ~ dt_imputado$age + I(dt_imputado$age^2))
+stargazer(Reg_earnings, type="latex")
+
+
+# Plot de la Estimación
+
+
+#Intervalos de confianza
+
+bootfunct <- function(data, index){
+  coef(lm(ingtot ~ age + I(age^2), data = dt_imputado, weights = fex_c, subset = index))
+}
+
+bootstrap1 <- boot(dt_imputado, bootfunct, R=1000)
+output_bootstrap1 <- t(rbind(bootstrap1$t0, apply(bootstrap1$t, 2, function(x) sd(x))))
+
+
+coeffunct <- function(data, index){
+  reg <- lm(ingtot ~ age + I(age^2), data = dt_imputado, weights = fex_c, subset = index)
+  coefs <- reg$coefficients
+  b2 <- coefs[2]
+  b3 <- coefs[3]
+  peak <- -b2/(2*b3)
+  return(peak)
+}
+
+boot11 <- boot(dt_imputado, coeffunct, R=1000)
+output_boot11 <- t(rbind(boot11$t0, apply(boot11$t, 2, function(x) sd(x))))
+
+alpha <- 0.05
+min <- output_boot11[1,1]-qnorm(1-(alpha/2))*output_boot11[1,2]
+max <- output_boot11[1,1]+qnorm(1-(alpha/2))*output_boot11[1,2]
+
+b11 <- bootstrap1$t0[1]
+b12 <- bootstrap1$t0[2]
+b13 <- bootstrap1$t0[3]
+
+
+############################################################################
+#
+#              Big Data & Machine Learning for Applied Economics                   
+#                               Problem Set 1
+#                                   Grupo: 
+#                      Paula Alarcón    Código: 201812516
+#                      Martín Lara      Código: 20171...
+#                      Nicolás González Código: 201813698
+#
+#############################################################################
+#
+#                      Punto 3: Gender Earnings Gap
+#
+#############################################################################
+
+#Creamos variable fem y el logaritmo de ingresos
+dt_imputado <- dt_imputado %>% 
+  mutate(
+    fem = ifelse(sex==1, 0, 1),
+    lningtot = ifelse(ingtot==0, NA, log(ingtot))
+    )
+
+View(dt_imputado)
+
+# Regresión 
+reg_fem <- lm(dt_imputado$lningtot ~ dt_imputado$fem)
+stargazer(reg_fem, type = "latex")
+
+#Dividimos la base en hombres y mujeres
+dt_fem <- dt_imputado %>% subset(sex==0) 
+dt_male <- dt_imputado %>% subset(sex==1)
+View(dt_fem)
+
+#Intervalos de confianza mujeres
+bootfunctfem <- function(data, index){
+  coef(lm(ingtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index))
+}
+
+bootstrap2 <- boot(dt_fem, bootfunct, R=1000)
+output_bootstrap2 <- t(rbind(bootstrap2$t0, apply(bootstrap2$t, 2, function(x) sd(x))))
+
+
+coeffunct2 <- function(data, index){
+  reg <- lm(ingtot ~ age + I(age^2), data = dt_fem, weights = fex_c, subset = index)
+  coefs <- reg$coefficients
+  b2 <- coefs[2]
+  b3 <- coefs[3]
+  peak <- -b2/(2*b3)
+  return(peak)
+}
+
+boot21 <- boot(dt_fem, coeffunct, R=1000)
+output_boot21 <- t(rbind(boot21$t0, apply(boot21$t, 2, function(x) sd(x))))
+
+alpha <- 0.05
+minfem <- output_boot21[1,1]-qnorm(1-(alpha/2))*output_boot21[1,2]
+maxfem <- output_boot21[1,1]+qnorm(1-(alpha/2))*output_boot21[1,2]
+
+b21 <- bootstrap2$t0[1]
+b22 <- bootstrap2$t0[2]
+b23 <- bootstrap2$t0[3]
+
+#Intervalos de confianza hombres
+bootfunctmale <- function(data, index){
+  coef(lm(ingtot ~ age + I(age^2), data = dt_male, weights = fex_c, subset = index))
+}
+
+bootstrap3 <- boot(dt_male, bootfunct, R=1000)
+output_bootstrap3 <- t(rbind(bootstrap3$t0, apply(bootstrap3$t, 2, function(x) sd(x))))
+
+
+coeffunct3 <- function(data, index){
+  reg <- lm(ingtot ~ age + I(age^2), data = dt_male, weights = fex_c, subset = index)
+  coefs <- reg$coefficients
+  b2 <- coefs[2]
+  b3 <- coefs[3]
+  peak <- -b2/(2*b3)
+  return(peak)
+}
+
+boot31 <- boot(dt_male, coeffunct, R=1000)
+output_boot31 <- t(rbind(boot31$t0, apply(boot31$t, 2, function(x) sd(x))))
+
+alpha <- 0.05
+minmale <- output_boot31[1,1]-qnorm(1-(alpha/2))*output_boot31[1,2]
+maxmale <- output_boot31[1,1]+qnorm(1-(alpha/2))*output_boot31[1,2]
+
+b31 <- bootstrap3$t0[1]
+b32 <- bootstrap3$t0[2]
+b33 <- bootstrap3$t0[3]
+
+#Regresiones condicionales Long y FWL 
+dt_imputado <- dt_imputado %>% 
+  mutate(
+    age2 = age^2,
+    agefem = age*fem,
+    age2fem =age2*fem,
+    oficiofem = oficio*fem,
+    maxEducLevelfem = maxEducLevel*fem,
+    hoursWorkUsualfem = hoursWorkUsual*fem,
+    p6426_impfem = p6426_imp*fem,
+    collegefem = college*fem,
+    ingreso = ingtot+p7500s1a1+p7500s2a1+ p7510s5a1,
+    lningreso = ifelse(ingreso==0, NA, log(ingreso))
+  )
+
+#Modelo sin restricción , es decir con female
+dt_imputado <- dt_imputado %>% 
+  mutate(
+    educ1 = ifelse(maxEducLevel==1, 1, 0),
+    educ1fem = educ1*fem,
+    educ3 = ifelse(maxEducLevel==3, 1, 0),
+    educ3fem = educ3*fem,
+    educ4 = ifelse(maxEducLevel==4, 1, 0),
+    educ4fem = educ4*fem,
+    educ5 = ifelse(maxEducLevel==5, 1, 0),
+    educ5fem = educ5*fem,
+    educ6 = ifelse(maxEducLevel==6, 1, 0),
+    educ6fem = educ6*fem,
+    educ7 = ifelse(maxEducLevel==7, 1, 0),
+    educ7fem = educ7*fem
+  )
+
+View(dt_imputado)
+
+reg_condfem <- lm(dt_imputado$lningreso ~ dt_imputado$fem +  factor(dt_imputado$maxEducLevel) + factor(dt_imputado$maxEducLevelfem) +
+                    dt_imputado$hoursWorkUsual+ dt_imputado$cuentaPropia + dt_imputado$age +dt_imputado$age2, weights = dt_imputado$fex_c)
+stargazer(reg_condfem, type = "text")
+
+#Modelo restringido
+reg_cond <- lm(dt_imputado$lningreso ~ factor(dt_imputado$maxEducLevel) + dt_imputado$hoursWorkUsual+ dt_imputado$cuentaPropia + dt_imputado$age +dt_imputado$age2, weights = dt_imputado$fex_c)
+stargazer(reg_cond, type = "text")
+
+#Prueba que no salió :(
+reg4 <- lm(lningtot ~ fem + profesional + profesionalfem + sineducacion + Sineducacionfem + primaria + primariafem + bachiller + bachillerfem + hoursWorkUsual + cuentaPropia + age + age2, data = dt_imputado, weights = fex_c )
+stargazer(reg4, type = "text")
+View(reg4)
+
+#Prueba de hipótesis
+
+
+
+lm
+
+#FWL
+
+dt_res=dt_imputado
+dt_res <- dt_res %>% drop.na(lningtot)
+
+dt_res=data.frame(mat=matrix(ncol = 0, nrow = 0))
+
+
+dt_res$res_lningtot <- (lm(lningtot ~ cuentaPropia, data = dt_imputado)$residuals)
+View(res_lningtot$residuals)  
+View(dt_res)
+
+                                      
+                                      
+                                      res_educ1=lm(educ1 ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ1fem=lm(educ1fem ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ3=lm(educ3 ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ3fem=lm(educ3fem ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ4=lm(educ4 ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ4fem=lm(educ4fem ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ5=lm(educ5 ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ5fem=lm(educ5fem ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ6=lm(educ6 ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ6fem=lm(educ6fem ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ7=lm(educ7 ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_educ7fem=lm(educ7fem ~ cuentaPropia, data = dt_imputado)$residuals, 
+                                      res_hoursWorkUsual=lm(hoursWorkUsual ~ cuentaPropia, data = dt_imputado)$residuals,
+                                      res_age=lm(age ~ cuentaPropia, data=dt_imputado)$residuals,
+                                      res_age2=lm(age2 ~ cuentaPropia, data=dt_imputado)$residuals,
+                                      )
+ 
+reg_FWL <- lm(res_lningtot ~ res_educ1 + res_educ1fem + res_educ3 + res_educ3fem + res_educ4 + res_educ4fem + res_educ5
+              + res_educ5fem + res_educ6 + res_educ6fem + res_educ7 + res_educ7fem + res_hoursWorkUsual + res_age + res_age2)
