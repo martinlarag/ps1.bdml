@@ -78,6 +78,15 @@ dt_imputado <-  kNN(dt_final, variable = c("cotPension", "hoursWorkUsual", "p642
 summary(dt_imputado)
 stargazer(dt_imputado, type='latex')
 
+# Gráficas descriptivas:
+hist(x=dt_imputado$age, weights=dt_imputado$fex_c, main='', 
+     xlab='Edad', ylab='Frecuencia', fill='dodgerblue1')
+sum(dt_imputado$fex_c)
+hist(x=dt_imputado$college)
+hist(x=dt_imputado$cotPension)
+PieChart(estrato1, hole=0, values="%", data=dt_earnings, fill=1:6, weights=dt_imputado$fex_c, radius=1, main="")
+PieChart(sex, hole=0, values="%", data=dt_earnings, fill=1:6, weights=dt_imputado$fex_c, radius=1, main="")
+
 #############################################################################
 #
 #              Big Data & Machine Learning for Applied Economics                   
