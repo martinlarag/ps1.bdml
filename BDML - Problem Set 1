@@ -255,13 +255,13 @@ dt_imputado2 <- dt_imputado2 %>%
     educ7fem = educ7*fem
   )
 
-reg_condfem <- lm(dt_imputado2$lningreso ~ dt_imputado2$fem +  factor(dt_imputado2$maxEducLevel) + factor(dt_imputado2$maxEducLevelfem) +
-                    dt_imputado2$hoursWorkUsual+ dt_imputado2$cuentaPropia + dt_imputado2$age +dt_imputado2$age2, weights = dt_imputado2$fex_c)
-stargazer(reg_condfem, type = "text")
-
+reg_condfem3 <- lm(lningtot ~ fem + educ3 + educ3fem + educ4 + educ4fem + educ5 + educ5fem + educ6 + educ6fem + educ7 +
+                     hoursWorkUsual+ cuentaPropia + age + age2, weights = fex_c, data=dt_res)
 #Modelo restringido
-reg_cond <- lm(dt_imputado2$lningreso ~ factor(dt_imputado2$maxEducLevel) + dt_imputado2$hoursWorkUsual+ dt_imputado2$cuentaPropia + dt_imputado2$age +dt_imputado2$age2, weights = dt_imputado2$fex_c)
-stargazer(reg_cond, type = "text")
+reg_cond <- lm(lningtot ~ educ3 +  educ4  + educ5 +  educ6  + educ7 +
+                     hoursWorkUsual+ cuentaPropia + age + age2, weights = fex_c, data=dt_res)
+stargazer(reg_condfem3, reg_cond, type = "latex")
+
 
 #FWL
 dt_res=dt_imputado2
